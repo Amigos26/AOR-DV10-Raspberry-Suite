@@ -22,6 +22,7 @@
     <section class="listen" aria-label="Odsłuch na żywo">
       <button id="listen" type="button" aria-pressed="false">Słuchaj na żywo</button>
       <p id="audioStatus" role="status">Odsłuch wyłączony</p>
+      <p id="audioListenerCount" class="audience-count">Słuchacze online: —</p>
       <label for="volume">Głośność u Ciebie <output id="volumeValue">70%</output></label>
       <input id="volume" type="range" min="0" max="1" step="0.01" value="0.7">
       <audio id="audio" preload="none"></audio>

@@ -1,4 +1,31 @@
 'use strict';
+function renderStationLabel(element, label) {
+  element.replaceChildren();
+  element.hidden = !label;
+  if (!label) return;
+  for (const entry of String(label).split(' / ')) {
+    const separator = entry.indexOf(' → ');
+    const bank = separator < 0 ? entry : entry.slice(0, separator);
+    const name = separator < 0 ? '' : entry.slice(separator + 3);
+    const group = document.createElement('span');
+    group.className = 'station-entry';
+    for (const [caption, value] of [['Bank:', bank], ['Nazwa:', name]]) {
+      if (!value) continue;
+      const row = document.createElement('span');
+      row.className = 'station-row';
+      const key = document.createElement('small');
+      key.className = 'station-key';
+      key.textContent = caption;
+      const text = document.createElement('span');
+      text.className = 'station-value';
+      text.textContent = value;
+      row.append(key, text);
+      group.appendChild(row);
+    }
+    element.appendChild(group);
+  }
+}
+
 const frequency = document.getElementById('frequency');
 const channel = document.getElementById('channel');
 const connection = document.getElementById('connection');
@@ -14,7 +41,7 @@ let lastReception = null;
 function showLastReception(hit) {
   lastReception = hit;
   frequency.textContent = (hit.frequency_hz / 1000000).toFixed(5);
-  channel.textContent = hit.channel_name || '';
+  renderStationLabel(channel, hit.channel_name || '');
   channel.hidden = !hit.channel_name;
 }
 
@@ -27,12 +54,14 @@ async function refresh() {
     const response = await fetch('/api/status', {cache: 'no-store', signal: AbortSignal.timeout(18000)});
     if (!response.ok) throw new Error('unavailable');
     const data = await response.json();
+    document.getElementById('audioListenerCount').textContent = 'Słuchacze online: ' + (Number.isInteger(data.audio_listeners) ? data.audio_listeners : '—');
     if (!data.connected || Date.now() / 1000 - data.updated_at > 30) throw new Error('disconnected');
     if (data.last_received && Number.isFinite(data.last_received.frequency_hz)) showLastReception(data.last_received);
     connection.textContent = data.receiving ? '● Odbiór sygnału' : '● Oczekiwanie na odbiór';
     connection.className = 'online';
     freshness.textContent = receptionTime();
   } catch (_) {
+    document.getElementById('audioListenerCount').textContent = 'Słuchacze online: —';
     connection.textContent = '● Brak aktualnych danych';
     connection.className = '';
     freshness.textContent = (lastReception ? receptionTime() + ' · ' : '') + 'Ponawianie połączenia…';

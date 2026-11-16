@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import re
@@ -10,12 +9,13 @@ def parse_composite_fields(text: str, *, tag_field: str | None = None) -> dict:
     fields: dict = {}
     for match in re.finditer(r"\S+", text):
         token = match.group()
+        # A text field may have a separate value: "TT STRAZ" or "TTSTRAZ".
+        # Consume the remainder before interpreting words in the name as codes.
+        if tag_field and len(token) >= 2 and token[:2].upper() == tag_field.upper():
+            fields[tag_field.upper()] = text[match.start() + 2 :].strip()
+            break
         if len(token) > 2 and token[:2].isalpha():
-            code = token[:2].upper()
-            if tag_field and code == tag_field.upper():
-                fields[code] = text[match.start() + 2 :].strip()
-                break
-            fields[code] = token[2:]
+            fields[token[:2].upper()] = token[2:]
     return fields
 
 

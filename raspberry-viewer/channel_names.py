@@ -23,17 +23,25 @@ def parse_connect(lines):
     header = next(reader)
     if len(header) < 3 or header[:2] != ['DEPMICRO-BACKUP', 'MEM BANK']:
         raise ValueError('Expected AR-DV10 Connect memory-bank export')
-    grouped = {}
-    for row_number, row in enumerate(reader, 2):
+    records = list(enumerate(reader, 2))
+    bank_titles = {}
+    for row_number, row in records:
         if row[0] == 'MB':
             if len(row) != 4:
                 raise ValueError('Invalid bank record in row %d' % row_number)
+            bank_titles[row[1].strip()] = row[3].strip()
+    grouped = {}
+    for row_number, row in records:
+        if row[0] == 'MB':
             continue
         if row[0] != 'MC' or len(row) != 9:
             raise ValueError('Invalid channel record in row %d' % row_number)
         if not row[3].strip():
             continue  # Empty receiver memory slot.
-        add_name(grouped, row[3], row[8], row_number)
+        bank_name = bank_titles.get(row[1][:2], '')
+        channel_name = row[8].strip()
+        label = ' → '.join(part for part in (bank_name, channel_name) if part)
+        add_name(grouped, row[3], label, row_number)
     return {hz: ' / '.join(sorted(values)) for hz, values in grouped.items()}
 
 

@@ -41,3 +41,8 @@ work/
 *.pem
 *.key
 id_ed25519*
+
+# Weekly synchronization runtime state
+.sync-radio-channels.lock
+.radio-channel-sync-state.pending
+radio-channel-sync-state.json

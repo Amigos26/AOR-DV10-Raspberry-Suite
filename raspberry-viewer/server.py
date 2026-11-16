@@ -20,6 +20,13 @@ cached_at = 0.0
 names = {}
 names_at = 0.0
 last_received = None
+listener_lock = threading.Lock()
+audio_listeners = 0
+
+
+def listener_count():
+    with listener_lock:
+        return audio_listeners
 
 
 def fetch_json(path):
@@ -66,6 +73,7 @@ def status():
             held['channel_name'] = local_names.get(held['frequency_hz']) or names.get(held['frequency_hz'])
         cached = {
             'frequency_hz': frequency,
+            'audio_listeners': listener_count(),
             'channel_name': local_names.get(frequency) or names.get(frequency),
             'last_received': held,
             'receiving': receiving,
@@ -131,8 +139,10 @@ class Handler(BaseHTTPRequestHandler):
             pass
 
     def stream_audio(self):
+        global audio_listeners
         connection = http.client.HTTPConnection(*UPSTREAM, timeout=12)
         started = False
+        counted = False
         try:
             connection.request('GET', '/api/audio/live.aac')
             response = connection.getresponse()
@@ -142,6 +152,9 @@ class Handler(BaseHTTPRequestHandler):
             self.connection.settimeout(15)
             self.headers_for(200, 'audio/aac')
             started = True
+            with listener_lock:
+                audio_listeners += 1
+            counted = True
             while data := response.read(1024):
                 self.wfile.write(data)
                 self.wfile.flush()
@@ -149,6 +162,9 @@ class Handler(BaseHTTPRequestHandler):
             if not started:
                 self.send_bytes(503, 'text/plain', b'Audio unavailable\n')
         finally:
+            if counted:
+                with listener_lock:
+                    audio_listeners -= 1
             connection.close()
 
 

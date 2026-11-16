@@ -22,7 +22,7 @@ spec.loader.exec_module(viewer)
 class ViewerTests(unittest.TestCase):
     def test_original_export_and_reload(self):
         text = '\ufeffDEPMICRO-BACKUP,MEM BANK,AR-DV10,P2504B,example\nMB,00,0,Test\nMC,0000,0,0145.50000,012.50,000.00,0F0,0,Przykład\nMC,0001,,,,,,,\nMC,0002,0,0145.50000,012.50,000.00,0F0,0,Druga nazwa\n'
-        self.assertEqual(parse_names(text), {145500000: 'Druga nazwa / Przykład'})
+        self.assertEqual(parse_names(text), {145500000: 'Test → Druga nazwa / Test → Przykład'})
         with tempfile.TemporaryDirectory() as directory:
             path = pathlib.Path(directory) / 'channels.csv'
             path.write_text(text, encoding='utf-8')
