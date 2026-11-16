@@ -2,13 +2,16 @@
 
 Polski · [English](README.md)
 
-Panel sterowania i osobna strona do odsłuchu odbiornika AOR AR-DV10 na Raspberry Pi.
+Panel sterowania, edytor kanałów i osobna strona do odsłuchu odbiorników AOR AR-DV10 i AR-DV1 na Raspberry Pi.
 Projekt powstał z wykorzystaniem [roxio/AOR-AR-DV10-Suite](https://github.com/roxio/AOR-AR-DV10-Suite) i zachowuje oznaczenia autorów oryginału. Repozytorium korzysta z istniejącej licencji GPL-3.0 w pliku [LICENSE](LICENSE), a oryginalna licencja MIT i informacja o prawach autorskich są zachowane w [LICENSE.upstream-MIT](LICENSE.upstream-MIT).
 Dokumentacja oryginalnej biblioteki znajduje się w [docs/UPSTREAM_README.pl.md](docs/UPSTREAM_README.pl.md).
 
 ## Funkcje
 
-- Port **8080**: sterowanie radiem, nazwa kanału obok częstotliwości oraz wgrywanie CSV z przeglądarki.
+- **Edytor kanałów na porcie 8080:** zapis pojedynczego kanału lub całego banku, trwałe kopie przed zapisem, odczyt kontrolny oraz pobieranie i przywracanie kopii.
+
+- Nazwa banku i kanału w **tytule karty przeglądarki** na obu portach: na porcie 80 pozostaje ostatnio odebrany kanał, a na 8080 tytuł podąża za bieżącą częstotliwością. Gdy brakuje opisu, pokazuje częstotliwość.
+- Port **8080**: sterowanie radiem, wybór banków z nazwami i **Start/Stop skanowania**, opisy kanałów oraz wgrywanie CSV z przeglądarki.
 - Port **80**: podgląd i odsłuch bez komend sterujących. Ostatnio odebrana częstotliwość i nazwa pozostają widoczne podczas skanowania.
 - Wspólny dźwięk **AAC-LC, 48 kb/s, mono, 24 kHz**, przechwytywany z wejścia ALSA za pomocą FFmpeg.
 - Oryginalny eksport **AR-DV10 Connect / DEPMICRO-BACKUP** lub prosty CSV `frequency_mhz;name`.
@@ -26,7 +29,7 @@ Zrzuty przedstawiają rzeczywisty interfejs uruchomiony z symulatorem i przykła
 
 ### Panel sterowania — port 8080
 
-![Panel sterowania: obsługa odbiornika, częstotliwość, nazwa i wgrywanie CSV](docs/images/control-panel.png)
+![Panel sterowania: częstotliwość, nazwy kanałów, wybór banków oraz Start i Stop skanowania](docs/images/control-panel.png)
 
 ## Instalacja
 
@@ -117,23 +120,52 @@ Oryginalny eksport Connect zawiera nazwę banku (`MB`) i nazwę kanału (`MC`). 
 
 Licznik `Słuchacze online` **na porcie 80** zlicza aktywne połączenia odsłuchowe AAC obsługiwane przez tę stronę, także przez przekierowujący do niej serwer HTTPS. Nie liczy unikalnych osób ani samego otwarcia strony: dwie grające karty to dwa odsłuchy. Odtwarzanie bezpośrednio z panelu sterowania nie jest wliczane. Na porcie 8080 nie dodano tego licznika ani małych etykiet.
 
-## Uruchomienie skanowania banku pamięci
+Na porcie 8080 bank i kanał są wyświetlane w osobnych wierszach, bez małych etykiet i licznika odsłuchów.
 
-Na porcie **8080** rozwiń **Eksperymentalne · Telemetria · Konsola surowa i kolejka poleceń** i wyślij:
+## Skanowanie banków z panelu sterowania
 
-```text
-raw MS 11
-```
+Na **porcie 8080** otwórz sekcję **Skanowanie banków pamięci**:
 
-Uruchomi to skanowanie banku pamięci 11. Dla innego banku podaj jego dwucyfrowy numer. Bank musi zawierać zapisane kanały. Przycisk **VFO A** przełącza z powrotem do VFO i zatrzymuje skanowanie. Port 80 służy do podglądu i nie uruchamia skanowania. Komendę `MS` opisuje [lista poleceń AOR, sekcja Memory Scan](https://www.aorja.com/support/manuals/AR-DV1_COMMAND_LIST.pdf), a [zestawienie DV10/DV1](https://www.aorja.com/support/manuals/AR-DV10_AND_AR-DV1_COMMAND_LIST_SUMMARY.pdf) potwierdza obsługę obu modeli. Narzędzie **Start kolejki** uruchamia przeszukiwanie zakresów, czyli inną funkcję niż skanowanie zapisanych kanałów pamięci.
+1. Zaznacz jeden lub kilka banków. Lista pokazuje numer, nazwę i liczbę kanałów dostępnych do skanowania. Puste banki oraz banki zawierające wyłącznie pomijane kanały są nieaktywne.
+2. Kliknij **Start skanowania**. Radio skanuje wybrane banki swoim skanerem pamięci; skanowanie trwa również po zamknięciu przeglądarki.
+3. Kliknij **Stop**, aby zatrzymać skanowanie i przełączyć odbiornik do **VFO A**.
+
+**Zaznacz niepuste** wybiera wszystkie dostępne banki, a **Wyczyść wybór** usuwa zaznaczenia. **Odśwież banki** ponownie wczytuje listę ze wspólnego pliku CSV. Wybór banków jest zapamiętywany w bieżącej przeglądarce. Potrzebny jest oryginalny eksport **Connect / DEPMICRO-BACKUP z rekordami MB i MC** albo wcześniejszy odczyt pamięci radia skryptem synchronizacji. Prosty CSV z częstotliwością i nazwą nie zawiera struktury banków. Wgranie CSV aktualizuje opisy i wybór banków; nie programuje pamięci odbiornika.
+
+Sekcja zajmuje pełną szerokość panelu, lista banków ma przewijanie, a Start i Stop znajdują się nad nią. Komunikat po kliknięciu potwierdza wykonanie polecenia; nie jest ciągłym odczytem trybu pracy radia. Sterowanie skanowaniem jest dostępne tylko na porcie 8080. Podgląd na porcie 80 nie uruchamia ani nie zatrzymuje skanowania.
+
+Sprawdzone na rzeczywistych odbiornikach **AR-DV10 i AR-DV1**. Funkcja wykorzystuje natywne polecenia MR/BK/MS i wykonuje je bez nakładania na inne polecenia radia. Stop przełącza do VFO A, więc może zmienić aktualnie słyszaną częstotliwość. Narzędzie **Start kolejki** służy osobno do przeszukiwania zakresów.
+
+## Edytor kanałów — port 8080
+
+W panelu sterowania kliknij **Edytor kanałów** albo otwórz `http://ADRES_RASPBERRY:8080/memory-editor`.
+
+1. Wybierz bank i kliknij **Odczytaj bank z radia**. Radio przejdzie do **VFO A**, zatrzymując skanowanie. Dane zostaną dopuszczone do edycji i wykonania kopii dopiero po dwóch zgodnych odczytach: DV10 potrafi zwracać niespójne dane pamięci podczas skanowania.
+2. Edytuj nazwy, częstotliwości w MHz, tryby odbioru, kroki strojenia i oznaczenia pomijania podczas skanowania. Nazwy w radiu mogą mieć do 12 znaków ASCII, bez polskich liter. Chronione banki i kanały pozostają tylko do odczytu.
+3. **Zapisz** w wierszu zapisuje pojedynczy kanał, a **Zapisz cały bank** synchronizuje wszystkie 50 pozycji i nazwę banku. Przy zapisie banku **puste pozycje usuwają odpowiadające im kanały z radia**. Zapisywane są tylko zmienione rekordy, po czym cały bank jest sprawdzany odczytem.
+4. Przed każdym zapisem powstaje trwała kopia banku. Poniżej tabeli możesz wybrać kopię, pobrać ją albo przywrócić. Przywracanie również tworzy nową kopię bieżącej zawartości przed jej zastąpieniem.
+
+Zapis jest blokowany, jeśli pamięć banku zmieniła się od jego odczytania. Operacja działa w tle, pokazuje postęp i może zostać przerwana pomiędzy kanałami. Wcześniej zapisane pozycje pozostają w radiu, a niezapisane zmiany pozostają w otwartym edytorze. Restart usługi nie wznawia automatycznie przerwanego zapisu. Po edycji uruchom skanowanie ponownie w panelu sterowania.
+
+Kopie, stan przed zapisem i po nim oraz wyniki operacji pozostają w `AOR_VIEWER_DATA_DIR/backups/memory-editor/`. Zawierają prywatne dane odbiornika i nie trafiają do repozytorium. Gdy wspólny CSV jest oryginalnym eksportem Connect, poprawnie sprawdzony zapis odświeża opisy wybranego banku w obu panelach i zachowuje pozostałe banki. Prosty CSV z częstotliwością i nazwą wymaga pełnego odczytu pamięci radia, aby uzyskać strukturę banków.
+
+Odbiorniki potrafią buforować zapis pamięci. Do sprawdzenia końcowego stanu edytor potrzebuje **drugiego niechronionego banku z co najmniej jednym kanałem**. Ponowny zapis jego niezmienionych danych opróżnia bufor; ten bank również trafia do kopii i jest sprawdzany pod kątem niezmienionej zawartości. Bez odpowiedniego banku zapis jest blokowany przed zmianą pamięci. Port 80 nie udostępnia edytora.
+
+### Edytor kanałów
+
+![Edytor kanałów: banki z nazwami, zapis kanału i banku, kopie przed zapisem oraz przywracanie](docs/images/channel-editor.png)
 
 ## Testy
 
 ```bash
 .venv/bin/python -m unittest discover -s tests -p 'test_raspberry_viewer.py' -v
 .venv/bin/python -m unittest discover -s tests -p 'test_radio_sync.py' -v
+.venv/bin/python -m unittest discover -s tests -p 'test_memory_scan.py' -v
+.venv/bin/python -m unittest discover -s tests -p 'test_memory_editor.py' -v
 ```
 
 Oryginalne testy projektu wymagają zależności deweloperskich z `.[dev]`. Testy nowego podglądu używają danych syntetycznych i nie sterują fizycznym radiem.
 
 Repozytorium nie zawiera prywatnej bazy kanałów, kluczy SSH ani kopii danych z działającego Raspberry Pi.
+
+Opcjonalne testy JavaScript (Node.js): `node --test tests/test_tab_titles.cjs`.

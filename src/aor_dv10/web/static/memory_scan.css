@@ -1,0 +1,13 @@
+#memoryScanPanel .accordion-body{display:block;width:100%;box-sizing:border-box;min-width:0}
+#memoryScanPanel .memory-scan-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0}
+#memoryScanPanel .memory-scan-banks{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;width:100%;box-sizing:border-box;max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:10px;margin:12px 0;min-width:0;align-content:start;scrollbar-gutter:stable}
+#memoryScanPanel .memory-scan-choice{display:flex;align-items:center;gap:10px;padding:10px;min-width:0;box-sizing:border-box;border:1px solid var(--border);border-radius:5px;cursor:pointer;font-size:13px;line-height:1.4;text-align:left}
+#memoryScanPanel .memory-scan-choice input{flex:0 0 auto;width:16px;height:16px;margin:0;accent-color:var(--accent)}
+#memoryScanPanel .memory-scan-choice span{min-width:0;overflow-wrap:normal;word-break:normal}
+#memoryScanPanel .memory-scan-choice small{display:block;color:var(--muted);font-size:11px;line-height:1.5;margin-top:2px}
+#memoryScanPanel .memory-scan-choice:has(input:checked){border-color:var(--accent);background:var(--surface-2)}
+#memoryScanPanel .memory-scan-choice:has(input:disabled){opacity:.4;cursor:default}
+#memoryScanPanel .memory-scan-tools button:disabled{opacity:.45;cursor:default}
+#memoryScanPanel .memory-scan-actions .panel-btn{min-height:36px;padding:8px 16px;font-size:13px}
+#memoryScanPanel #memoryScanStatus{margin:0 0 10px;min-height:18px}
+@media(max-width:520px){#memoryScanPanel .memory-scan-banks{grid-template-columns:1fr;max-height:300px}}

@@ -2,7 +2,7 @@
 
 [Polski](README.pl.md) · English
 
-A Raspberry Pi web interface for the AOR AR-DV10 receiver, with a full control panel and a separate read-only listening page. Stream live AAC audio, display channel names from an AR-DV10 Connect CSV export, and keep the last received channel visible while the radio resumes scanning.
+A Raspberry Pi web interface for AOR AR-DV10 and AR-DV1 receivers, with a full control panel and a separate read-only listening page. Stream live AAC audio, display channel names from an AR-DV10 Connect CSV export, and keep the last received channel visible while the radio resumes scanning.
 
 ## Credits
 
@@ -12,7 +12,10 @@ Original documentation: [English](docs/UPSTREAM_README.md) · [Polish](docs/UPST
 
 ## Features
 
-- **Port 8080:** receiver control, channel names next to the frequency, and CSV uploads from the browser.
+- **Channel editor on port 8080:** individual-channel or whole-bank saves, durable pre-write backups, readback verification, backup download and restore.
+
+- **Port 8080:** receiver control, named bank selection with **Start/Stop memory scanning**, channel labels and CSV uploads from the browser.
+- Bank and channel names in the **browser tab title** on both ports. Port 80 retains the last received channel; port 8080 follows the current frequency, with a frequency fallback for unnamed channels.
 - **Port 80:** a read-only listening page that retains the last received frequency and channel name while scanning continues.
 - Shared live **AAC-LC audio at 48 kb/s, mono, 24 kHz**, captured from an ALSA audio input through FFmpeg.
 - Direct support for original **AR-DV10 Connect / DEPMICRO-BACKUP** exports and simple `frequency_mhz;name` CSV files.
@@ -30,7 +33,7 @@ The screenshots show the actual application with a simulated receiver and synthe
 
 ### Receiver control — port 8080
 
-![Control panel: receiver controls, frequency, channel label and CSV upload](docs/images/control-panel.png)
+![Control panel: receiver controls, frequency and channel labels, named bank selection and Start/Stop scanning](docs/images/control-panel.png)
 
 ## Requirements and installation
 
@@ -121,23 +124,52 @@ Original Connect exports contain bank titles (`MB`) and channel names (`MC`). Th
 
 `Słuchacze online` on **port 80** counts currently open AAC listening connections handled by that page, including connections through an HTTPS proxy to it. It is not a count of unique people or merely open pages; two playing tabs count as two streams. Audio played directly from the control panel is not included. The control page does not get this counter or the new small captions.
 
-## Starting a memory-bank scan
+On port 8080, the bank and channel appear on separate lines without the small captions or listening counter.
 
-On port **8080**, expand **Experimental · Telemetry · Raw console & Command queue** and send:
+## Memory-bank scanning from the control panel
 
-```text
-raw MS 11
-```
+On **port 8080**, open **Skanowanie banków pamięci** (memory-bank scanning):
 
-This starts a scan of memory bank 11; use another two-digit bank number for a different bank. The bank must contain programmed channels. Select **VFO A** to return to VFO mode. The read-only page on port 80 cannot start or stop scans. `MS` is documented in the [AOR command list, memory scan section](https://www.aorja.com/support/manuals/AR-DV1_COMMAND_LIST.pdf); the [DV10/DV1 summary](https://www.aorja.com/support/manuals/AR-DV10_AND_AR-DV1_COMMAND_LIST_SUMMARY.pdf) lists support for both models. The browser's **Start queue** tool runs search ranges, which is separate from scanning stored memory channels.
+1. Tick one or more banks. The list shows bank numbers, names and the number of channels available for scanning. Empty banks and banks containing only skipped channels are disabled.
+2. Click **Start skanowania** (Start scanning). The radio scans the selected banks using its native memory scanner; it continues after closing the browser.
+3. Click **Stop** to stop scanning and switch to **VFO A**.
+
+**Zaznacz niepuste** selects all eligible banks; **Wyczyść wybór** clears the selection. **Odśwież banki** reloads the bank list from the shared CSV. Bank choices are remembered in the current browser. Use an original **Connect / DEPMICRO-BACKUP export with MB and MC records**, or run the weekly/manual memory synchronization first; a simple frequency/name CSV does not supply the bank structure. Uploading a CSV updates labels and bank choices; it does not program the receiver.
+
+The layout uses the full section width, a scrollable bank grid, and Start/Stop buttons above the list. The last button result confirms the command; it is not a continuously polled receiver-mode indicator. These controls are available on port 8080 only. The read-only page on port 80 cannot start or stop scans.
+
+Tested with real **AR-DV10 and AR-DV1** receivers. The implementation uses native MR/BK/MS commands and serializes each operation with other radio commands. Stop enters VFO A, so it can change the currently heard frequency. The browser's **Start queue** tool is a separate search-range function.
+
+## Channel editor — port 8080
+
+Open **Edytor kanałów** from the control panel, or visit `http://RASPBERRY_ADDRESS:8080/memory-editor`.
+
+1. Select a bank and click **Odczytaj bank z radia** (read bank). This switches the receiver to **VFO A**, stopping scanning. Two matching reads are required before the data can be edited or backed up: DV10 memory reads can be inconsistent during scanning.
+2. Edit channel names, frequencies in MHz, reception modes, frequency steps and scan-skip flags. Radio names accept up to 12 ASCII characters. Protected banks and channels remain read-only.
+3. Use the row's **Zapisz** to save one channel, or **Zapisz cały bank** to synchronize all 50 slots and the bank name. In a whole-bank save, **blank slots delete the corresponding stored channels**. Only changed records are written; the complete bank is then verified by readback.
+4. Each save first creates a durable bank backup. Choose a copy below the table to download it or restore it. Restoring also creates a backup of the current bank before overwriting it.
+
+An edit is rejected if the radio's bank has changed since it was loaded. Writes run in the background, with progress and cancellation between channels. Cancellation leaves already-written positions in place; unsaved changes remain in the open editor. A service restart does not automatically replay an interrupted write. Resume scanning from the control panel when finished.
+
+Backups, before/after snapshots and operation results stay in `AOR_VIEWER_DATA_DIR/backups/memory-editor/`. These files contain private receiver data and are excluded from the repository. If the shared CSV is an original Connect export, a verified save updates that bank's labels for both panels while preserving other banks. A simple frequency/name CSV needs a full radio-memory synchronization to supply bank structure.
+
+The receivers may buffer flash writes. To verify the final stored state, the editor needs **another populated, unprotected bank** for a cache flush using unchanged data. This helper bank is included in the backup and checked to remain unchanged. If no suitable bank exists, the save is rejected before memory writes. The editor is unavailable through the read-only server on port 80.
+
+### Channel editor
+
+![Channel editor: named banks, individual saves, whole-bank save, durable backups and restore](docs/images/channel-editor.png)
 
 ## Tests
 
 ```bash
 .venv/bin/python -m unittest discover -s tests -p 'test_raspberry_viewer.py' -v
 .venv/bin/python -m unittest discover -s tests -p 'test_radio_sync.py' -v
+.venv/bin/python -m unittest discover -s tests -p 'test_memory_scan.py' -v
+.venv/bin/python -m unittest discover -s tests -p 'test_memory_editor.py' -v
 ```
 
 The original project's tests require its `.[dev]` dependencies. The added viewer tests use synthetic data and do not control physical radio hardware.
 
 Private channel lists, SSH keys and backups from the deployed Raspberry Pi are not included.
+
+Optional JavaScript checks (Node.js): `node --test tests/test_tab_titles.cjs`.

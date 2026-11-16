@@ -1,4 +1,11 @@
 'use strict';
+const listeningTabBase = document.title;
+function updateListeningTabTitle(hit) {
+  let label = hit ? String(hit.channel_name || '').replace(/\s+/g, ' ').trim() : '';
+  if (!label && hit && Number.isFinite(hit.frequency_hz)) label = (hit.frequency_hz / 1000000).toFixed(5) + ' MHz';
+  document.title = label ? label + ' | ' + listeningTabBase : listeningTabBase;
+}
+
 function renderStationLabel(element, label) {
   element.replaceChildren();
   element.hidden = !label;
@@ -40,6 +47,7 @@ let lastReception = null;
 
 function showLastReception(hit) {
   lastReception = hit;
+  updateListeningTabTitle(hit);
   frequency.textContent = (hit.frequency_hz / 1000000).toFixed(5);
   renderStationLabel(channel, hit.channel_name || '');
   channel.hidden = !hit.channel_name;

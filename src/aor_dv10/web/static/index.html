@@ -1046,6 +1046,7 @@
 
 <link rel="stylesheet" href="/static/viewer_upload.css?v=1">
 <link rel="stylesheet" href="/static/control_channel_name.css?v=1">
+<link rel="stylesheet" href="/static/memory_scan.css?v=20261116-2">
 </head>
 <body>
   <a href="#main" class="skip-link" data-i18n="skipToContent">Skip to content</a>
@@ -1732,6 +1733,26 @@
       </div>
         </div>
       </details>
+
+      <details class="panel-accordion-more" open id="memoryScanPanel">
+        <summary>Skanowanie banków pamięci</summary>
+        <div class="accordion-body">
+          <p class="hint">Zaznacz banki z zapisanymi kanałami. Skanowanie działa w radiu także po zamknięciu strony. Stop przełącza odbiornik do VFO A.</p>
+          <div class="memory-scan-tools">
+            <button type="button" class="panel-btn small" id="scanSelectAll">Zaznacz niepuste</button>
+            <button type="button" class="panel-btn small" id="scanSelectNone">Wyczyść wybór</button>
+            <button type="button" class="panel-btn small" id="scanRefreshBanks">Odśwież banki</button> <a id="memoryEditorLink" href="/memory-editor" style="color:var(--accent);padding:6px 10px;text-decoration:none;border:1px solid var(--border);border-radius:4px">Edytor kanałów →</a>
+          </div>
+          <div class="memory-scan-tools memory-scan-actions">
+            <button type="button" class="panel-btn accent" id="memoryScanStart" disabled>Start skanowania</button>
+            <button type="button" class="panel-btn" id="memoryScanStop">Stop</button>
+          </div>
+          <fieldset id="memoryScanBanks" class="memory-scan-banks" aria-label="Banki pamięci do skanowania"></fieldset>
+
+          <p class="hint" id="memoryScanStatus" role="status" aria-live="polite">Wczytywanie banków…</p>
+        </div>
+      </details>
+
 
       <details class="panel-accordion-more" open id="viewerNamesPanel">
         <summary>Nazwy kanałów w podglądzie</summary>
@@ -4545,7 +4566,7 @@ function formatModeReadout(raw) {
 function applyLanguage(lang) {
   currentLang = (lang === "pl") ? "pl" : "en";
   document.documentElement.lang = currentLang;
-  document.title = t("pageTitle");
+  updateControlTabTitle();
 
   document.querySelectorAll("[data-i18n]").forEach((el) => {
     el.textContent = t(el.getAttribute("data-i18n"));
@@ -6299,9 +6320,19 @@ function renderConsole(s) {
   }
 }
 
+function updateControlTabTitle(s) {
+  if (s) window.radioTabStatus = s;
+  const state = window.radioTabStatus || {};
+  const base = t("pageTitle").replace(/AOR\s+AR-DV10/i, state.model || 'AOR AR-DV10');
+  let label = state.connected ? String(state.channel_name || '').replace(/\s+/g, ' ').trim() : '';
+  if (!label && state.connected && Number.isFinite(state.frequency_hz)) label = (state.frequency_hz / 1000000).toFixed(5) + ' MHz';
+  document.title = label ? label + ' | ' + base : base;
+}
+
 function renderStatus(s) {
+  updateControlTabTitle(s);
   const channelLabel = document.getElementById('controlChannelName');
-  channelLabel.textContent = s.connected && Number.isFinite(s.frequency_hz) ? (s.channel_name || '') : '';
+  channelLabel.textContent = s.connected && Number.isFinite(s.frequency_hz) ? (s.channel_name || '').replaceAll(' → ', '\n').replaceAll(' / ', '\n\n') : '';
   channelLabel.hidden = !channelLabel.textContent;
   setDot(!!s.connected);
 
@@ -6465,6 +6496,7 @@ async function pollStatus() {
 let pollFailures = 0;
 function updateConnBanner(offline) {
   if (offline) {
+    updateControlTabTitle({...window.radioTabStatus, connected: false});
     const channelLabel = document.getElementById('controlChannelName');
     channelLabel.textContent = '';
     channelLabel.hidden = true;
@@ -9427,5 +9459,6 @@ document.querySelectorAll('pre.mini-out').forEach((el) => {
 </script>
 <script src="/static/radio_audio.js?v=4"></script>
 <script src="/static/viewer_upload.js?v=1"></script>
+<script src="/static/memory_scan.js?v=20261116-2"></script>
 </body>
 </html>

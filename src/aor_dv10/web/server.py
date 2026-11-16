@@ -116,6 +116,14 @@ def get_device() -> DV10Device:
     return _device
 
 
+from .memory_scan import router as memory_scan_router, configure as configure_memory_scan
+configure_memory_scan(get_device, _lock)
+app.include_router(memory_scan_router)
+from .memory_editor import router as memory_editor_router, configure as configure_memory_editor
+configure_memory_editor(get_device, _lock)
+app.include_router(memory_editor_router)
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index() -> HTMLResponse:
     return HTMLResponse((STATIC_DIR / "index.html").read_text(encoding="utf-8"))

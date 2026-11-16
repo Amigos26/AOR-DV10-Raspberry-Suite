@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AOR · Edytor kanałów</title><link rel="stylesheet" href="/static/memory_editor.css?v=2"><script src="/static/memory_editor.js?v=2" defer></script></head><body><div id="aor-channel-editor" aria-label="Projekt edytora kanałów AOR">
+  <header class="app-head"><div><span class="brand" id="aor-model">AOR · Edytor</span><span class="crumb"><a href="/">← Panel sterowania</a> / Kanały</span></div><span class="demo" id="aor-connection">Łączenie z radiem…</span></header>
+  <div class="workspace">
+    <div class="heading"><div><h2>Edytor kanałów</h2><p>Banki pamięci · port 8080</p></div><button type="button" class="quiet" id="aor-read">Odczytaj bank z radia</button></div>
+    <div class="bank-toolbar">
+      <label>Bank pamięci<select id="aor-bank" aria-label="Bank pamięci"></select></label>
+      <label>Nazwa banku<input id="aor-bank-name" maxlength="12" aria-label="Nazwa banku, do 12 znaków" autocomplete="off"></label>
+      <div class="bank-action"><button type="button" class="primary" id="aor-save-bank">Zapisz cały bank</button><span id="aor-bank-info" class="muted"></span></div>
+    </div>
+    <section id="aor-review" class="review" aria-label="Podsumowanie operacji" hidden>
+      <div><h3 id="aor-review-title"></h3><p id="aor-review-detail"></p></div><div class="actions"><button type="button" class="quiet" id="aor-review-cancel">Wróć do edycji</button><button type="button" class="primary" id="aor-review-confirm">Utwórz kopię i zapisz</button></div>
+    </section>
+    <section id="aor-operation" class="operation" aria-label="Postęp zapisu" hidden><div class="between"><span id="aor-progress-text" role="status" aria-live="polite"></span><button type="button" class="quiet" id="aor-interrupt">Przerwij</button></div><progress id="aor-progress" max="50" value="0" aria-label="Zapis kanałów"></progress></section>
+    <div class="list-heading"><h3>Kanały <span id="aor-dirty" class="change-count"></span></h3><span class="muted">Odczyt i zapis zatrzymują skanowanie. Wznowisz je w panelu sterowania.</span></div>
+    <div class="table-scroll"><table><thead><tr><th scope="col">Pozycja</th><th scope="col">Nazwa kanału</th><th scope="col">Częstotliwość <span class="muted">MHz</span></th><th scope="col">Tryb</th><th scope="col">Pomiń<br>skanowanie</th><th scope="col">Zapis pojedynczy</th></tr></thead><tbody id="aor-rows"></tbody></table></div>
+    <div class="table-footer"><span id="aor-page-info" class="muted"></span><div class="actions"><button type="button" class="quiet" id="aor-prev" aria-label="Poprzednie kanały">← Poprzednie</button><button type="button" class="quiet" id="aor-next" aria-label="Następne kanały">Następne →</button></div></div>
+    <footer class="statusbar"><div><span id="aor-message" role="status" aria-live="polite">Wybierz bank do odczytu.</span><small id="aor-backup-info">Kopia banku powstaje przed każdym zapisem.</small></div><div class="copies"><label>Kopia banku<select id="aor-backups"><option value="">Brak kopii</option></select></label><div class="actions"><a id="aor-download" class="download" hidden>Pobierz kopię</a><button type="button" class="quiet" id="aor-restore" disabled>Przywróć kopię</button></div></div></footer>
+  </div>
+</div>
+</body></html>
