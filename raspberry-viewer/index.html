@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>AOR AR-DV10 · Odsłuch</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/viewer.js" defer></script>
+</head>
+<body>
+  <main>
+    <header><span class="brand">AOR <strong>AR-DV10</strong></span></header>
+    <section class="display" aria-label="Aktualny kanał">
+      <p id="connection" role="status">Łączenie z radiem…</p>
+      <h1>Ostatnio odebrany kanał</h1>
+      <div class="frequency-row">
+        <div class="frequency"><span id="frequency">—</span> <span class="unit">MHz</span></div>
+        <span id="channel" class="channel-name" hidden></span>
+      </div>
+      <p id="freshness">Oczekiwanie na pierwszy odebrany sygnał</p>
+    </section>
+    <section class="listen" aria-label="Odsłuch na żywo">
+      <button id="listen" type="button" aria-pressed="false">Słuchaj na żywo</button>
+      <p id="audioStatus" role="status">Odsłuch wyłączony</p>
+      <label for="volume">Głośność u Ciebie <output id="volumeValue">70%</output></label>
+      <input id="volume" type="range" min="0" max="1" step="0.01" value="0.7">
+      <audio id="audio" preload="none"></audio>
+    </section>
+    <footer>Podgląd i dźwięk na żywo · Raspberry Pi</footer>
+  </main>
+</body>
+</html>
