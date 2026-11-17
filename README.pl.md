@@ -24,13 +24,15 @@ Dokumentacja oryginalnej biblioteki znajduje się w [docs/UPSTREAM_README.pl.md]
 
 Zrzuty przedstawiają rzeczywisty interfejs uruchomiony z symulatorem i przykładowymi kanałami. Nie zawierają prywatnej bazy częstotliwości.
 
+Nowe zrzuty obu paneli pokazują **145.500 MHz zapisaną w dwóch bankach pamięci**: `01 / DEMO A / DEMO ONE` i `04 / DEMO B / DEMO TWO`. Panel sterowania pokazuje bieżącą pozycję w banku 04. Podgląd zachowuje tę samą parę banku i kanału po wznowieniu skanowania przez bank 01 na tej samej częstotliwości. W każdym widoku jest jeden bank i jeden kanał.
+
 ### Podgląd i odsłuch — port 80
 
-![Strona odsłuchowa: bank nad kanałem, dźwięk AAC i licznik słuchaczy](docs/images/listening-panel.png)
+![Podgląd: jedna zapamiętana para DEMO B / DEMO TWO po wznowieniu skanowania, dźwięk AAC i licznik słuchaczy](docs/images/listening-panel.png)
 
 ### Panel sterowania — port 8080
 
-![Panel sterowania: częstotliwość, nazwy kanałów, wybór banków oraz Start i Stop skanowania](docs/images/control-panel.png)
+![Panel sterowania: aktualna pozycja DEMO B / DEMO TWO na 145.500 MHz, wybór banków oraz Start i Stop skanowania](docs/images/control-panel.png)
 
 ## Instalacja
 

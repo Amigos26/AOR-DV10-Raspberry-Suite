@@ -28,13 +28,15 @@ Original documentation: [English](docs/UPSTREAM_README.md) · [Polish](docs/UPST
 
 The screenshots show the actual application with a simulated receiver and synthetic channels, using the Polish UI. They contain no private channel list.
 
+The updated panel screenshots use **145.500 MHz in two memory banks**: `01 / DEMO A / DEMO ONE` and `04 / DEMO B / DEMO TWO`. The control panel shows the current position in bank 04. The listening page retains that same bank/channel pair after scanning resumes through bank 01 at the same frequency. Each view displays one bank and one channel.
+
 ### Read-only listening page — port 80
 
-![Listening page: stacked bank/channel labels, AAC playback and active listener count](docs/images/listening-panel.png)
+![Listening page: one retained DEMO B / DEMO TWO pair after scanning resumes, AAC playback and listener count](docs/images/listening-panel.png)
 
 ### Receiver control — port 8080
 
-![Control panel: receiver controls, frequency and channel labels, named bank selection and Start/Stop scanning](docs/images/control-panel.png)
+![Control panel: current DEMO B / DEMO TWO position at 145.500 MHz, bank selection and Start/Stop scanning](docs/images/control-panel.png)
 
 ## Requirements and installation
 
