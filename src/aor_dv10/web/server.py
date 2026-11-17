@@ -18,7 +18,8 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from .radio_audio import router as audio_router, radio_audio
-from .viewer_upload import router as viewer_upload_router, channel_name_for
+from .viewer_upload import router as viewer_upload_router
+from .receiver_context import ensure_receiver_stream, enrich_status
 
 from ..adif import parse_adif, write_adif
 from ..command_utils import (
@@ -133,6 +134,7 @@ async def index() -> HTMLResponse:
 def api_status():
     device = get_device()
     with _status_lock:
+        ensure_receiver_stream(device)
         s = device.status()
     def _try(fn):
         try:
@@ -145,9 +147,9 @@ def api_status():
         digits = "".join(ch for ch in raw_of if ch.isdigit())
         return device.get_offset_freq(int(digits) if digits else 0)
 
-    return {
+    payload = {
         "frequency_hz": s.frequency_hz,
-        "channel_name": channel_name_for(s.frequency_hz) if device.connected else None,
+        "channel_name": None,
         "mode": s.mode,
         "mode_description": s.mode_info.describe() if s.mode_info else None,
         "squelch": s.squelch,
@@ -197,6 +199,8 @@ def api_status():
         "firmware_version": _try(device.firmware_version),
         "analog_modes_without_distinction": sorted(_try(device.analog_modes_without_distinction) or set()),
     }
+
+    return enrich_status(payload, device)
 
 
 def _channel_json(c: MemoryChannel) -> dict:

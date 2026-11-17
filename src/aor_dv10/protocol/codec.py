@@ -82,6 +82,9 @@ class CommandChannel:
         self._lock = threading.RLock()
         self._trace: Deque[str] = deque(maxlen=2000)
         self._trace_sink: Optional[Callable[[str], None]] = None
+        self.receiver_snapshot = None
+        self.receiver_last_received = None
+        self._response_queue = deque()
 
     def _log_trace(self, direction: str, data: bytes) -> None:
         ts = time.strftime("%H:%M:%S", time.localtime()) + f".{int(time.time() * 1000) % 1000:03d}"
@@ -101,6 +104,46 @@ class CommandChannel:
         lines = list(self._trace)
         return lines if n is None else lines[-n:]
 
+    def _read_command_response(self, timeout, expected=None):
+        if self._response_queue:
+            return self._response_queue.popleft()
+        deadline = time.monotonic() + timeout
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return None
+            raw = self.transport.read_line(remaining)
+            if raw is None:
+                return None
+            text = raw.decode("ascii", errors="replace").strip()
+            match = _RESULT_CODE_PREFIX_RE.match(text)
+            result = int(match.group(1)) if match and int(match.group(1)) in _KNOWN_RESULT_CODES else None
+            payload = match.group(2) if result is not None else text
+            if payload.startswith("RX ") and (result in (None, 10, 11, 20, 21)):
+                stamp = (payload, time.monotonic(), time.time())
+                self.receiver_snapshot = stamp
+                lm = re.search(r"\bLM\d{3}([0-3])(?:\s|$)", payload)
+                if lm and lm.group(1) in ("1", "2"):
+                    self.receiver_last_received = stamp
+                if result in (10, 11) or expected != "RX":
+                    self._log_trace("RX", raw)
+                    continue
+            # LC/LT reports also share the serial stream with command replies.
+            if result in (10, 11) and payload[:2] in ("RF", "LM"):
+                self._log_trace("RX", raw)
+                continue
+            return raw
+
+    def collect_receiver_reports(self):
+        # Preserve command continuations while consuming idle RT telemetry.
+        with self._lock:
+            port = getattr(self.transport, "_serial", None)
+            if self._response_queue or port is None or not port.in_waiting:
+                return
+            raw = self._read_command_response(.03)
+            if raw is not None:
+                self._response_queue.append(raw)
+
     def send(
         self,
         code: str,
@@ -118,13 +161,13 @@ class CommandChannel:
             self.transport.write_line(tx_bytes)
             self._log_trace("TX", tx_bytes)
 
-            raw = self.transport.read_line(wait)
+            raw = self._read_command_response(wait, code.upper())
             if raw is None:
                 self._log_trace("RX", b"<no response / timeout>")
                 resync_bytes = b"\r"
                 self.transport.write_line(resync_bytes)
                 self._log_trace("TX", resync_bytes)
-                discarded = self.transport.read_line(wait)
+                discarded = self._read_command_response(wait)
                 self._log_trace("RX", discarded if discarded is not None else b"<no response / timeout>")
                 if not retry:
                     raise DV10ResyncNeeded(
@@ -163,7 +206,7 @@ class CommandChannel:
 
     def read_pending(self, timeout: Optional[float] = None) -> Optional[Response]:
         with self._lock:
-            raw = self.transport.read_line(timeout if timeout is not None else self.timeout)
+            raw = self._read_command_response(timeout if timeout is not None else self.timeout)
             if raw is None:
                 self._log_trace("RX", b"<no response / timeout>")
                 return None

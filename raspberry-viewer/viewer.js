@@ -6,14 +6,14 @@ function updateListeningTabTitle(hit) {
   document.title = label ? label + ' | ' + listeningTabBase : listeningTabBase;
 }
 
-function renderStationLabel(element, label) {
+function renderStationLabel(element, label, context = {}) {
   element.replaceChildren();
   element.hidden = !label;
   if (!label) return;
-  for (const entry of String(label).split(' / ')) {
+  for (const entry of [String(label)]) {
     const separator = entry.indexOf(' → ');
-    const bank = separator < 0 ? entry : entry.slice(0, separator);
-    const name = separator < 0 ? '' : entry.slice(separator + 3);
+    const bank = context.bank_name || '';
+    const name = context.memory_name || (!bank ? entry : '');
     const group = document.createElement('span');
     group.className = 'station-entry';
     for (const [caption, value] of [['Bank:', bank], ['Nazwa:', name]]) {
@@ -49,7 +49,7 @@ function showLastReception(hit) {
   lastReception = hit;
   updateListeningTabTitle(hit);
   frequency.textContent = (hit.frequency_hz / 1000000).toFixed(5);
-  renderStationLabel(channel, hit.channel_name || '');
+  renderStationLabel(channel, hit.channel_name || '', hit);
   channel.hidden = !hit.channel_name;
 }
 

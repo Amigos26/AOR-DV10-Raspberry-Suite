@@ -10,6 +10,7 @@ Dokumentacja oryginalnej biblioteki znajduje się w [docs/UPSTREAM_README.pl.md]
 
 - **Edytor kanałów na porcie 8080:** zapis pojedynczego kanału lub całego banku, trwałe kopie przed zapisem, odczyt kontrolny oraz pobieranie i przywracanie kopii.
 
+- **Właściwy bank i kanał na obu portach:** przy powtarzających się częstotliwościach wyświetlana jest wyłącznie aktualna pozycja pamięci radia, bez łączenia opisów.
 - Nazwa banku i kanału w **tytule karty przeglądarki** na obu portach: na porcie 80 pozostaje ostatnio odebrany kanał, a na 8080 tytuł podąża za bieżącą częstotliwością. Gdy brakuje opisu, pokazuje częstotliwość.
 - Port **8080**: sterowanie radiem, wybór banków z nazwami i **Start/Stop skanowania**, opisy kanałów oraz wgrywanie CSV z przeglądarki.
 - Port **80**: podgląd i odsłuch bez komend sterujących. Ostatnio odebrana częstotliwość i nazwa pozostają widoczne podczas skanowania.
@@ -92,11 +93,13 @@ Podgląd na porcie 80 blokuje przesyłanie komend. Panel sterowania na 8080 pozo
 
 Przy ręcznym uruchamianiu oba procesy powinny używać tego samego `AOR_VIEWER_DATA_DIR`. Przy usługach systemd wspólne ustawienia można dodać w pliku `/etc/aor-dv10.env`, np. `AOR_AUDIO_DEVICE=plughw:CARD=Device,DEV=0`.
 
-Przykłady CSV są w `examples/`. Eksport w oryginalnym formacie jest czytany bez konwersji; nazwy o tej samej częstotliwości są łączone. Limit przesyłanego pliku wynosi 1 MB; wymagane kodowanie to UTF-8 (opcjonalnie z BOM).
+Przykłady CSV są w `examples/`. Eksport w oryginalnym formacie jest czytany bez konwersji; bank i kanał są dobierane według pozycji pamięci zgłoszonej przez radio. Powtarzające się częstotliwości nie powodują łączenia opisów. Prosty CSV z częstotliwością i nazwą nadal można wgrać, ale nie zawiera on informacji o bankach. Limit przesyłanego pliku wynosi 1 MB; wymagane kodowanie to UTF-8 (opcjonalnie z BOM).
 
 ## Ostatni odebrany kanał
 
-Podgląd zapamiętuje kanał, gdy radio zgłasza otwartą blokadę szumów (`squelch_open`). Kolejne częstotliwości skanowania nie zastępują zapamiętanego odbioru. Przed pierwszym odebranym sygnałem wyświetla się oczekiwanie. Stan jest przechowywany w pamięci usługi; restart usługi go zeruje. Dane są odpytywane przy otwartym podglądzie mniej więcej co sekundę, więc bardzo krótkie transmisje mogą zostać pominięte.
+Podgląd zapisuje razem bank, pozycję kanału, częstotliwość i nazwę, gdy radio zgłasza otwartą blokadę szumów. Po wznowieniu skanowania port 80 zachowuje ten konkretny odbiór, nawet jeśli ta sama częstotliwość znajduje się w innych bankach. Port 8080 pokazuje bieżącą pozycję radia. Przed pierwszym odebranym sygnałem podgląd pokazuje oczekiwanie.
+
+Usługa sterowania odbiera raporty mniej więcej co 500 ms i zapamiętuje ostatni odbiór niezależnie od odpytywania przeglądarki. Strona odświeża dane mniej więcej co sekundę. Bardzo krótkie transmisje pomiędzy raportami mogą zostać pominięte. Historia pozostaje w pamięci; restart usługi sterowania ją zeruje. Po restarcie samego podglądu ostatni odbiór może zostać odtworzony z nadal działającej usługi sterowania.
 
 ## Cotygodniowy odczyt pamięci radia
 
@@ -116,7 +119,9 @@ Termin można zmienić argumentem instalatora `--sync-calendar`. Logi i kopie po
 
 ## Nazwa banku, kanału i licznik słuchaczy
 
-Oryginalny eksport Connect zawiera nazwę banku (`MB`) i nazwę kanału (`MC`). Na stronie odsłuchowej bank jest u góry, a kanał pod nim; poprzedzają je małe etykiety `Bank:` i `Nazwa:`. Kanał bez własnej nazwy pokazuje sam bank. Jeśli częstotliwość występuje w kilku bankach, wyświetlane są wszystkie pasujące opisy.
+Oryginalny eksport Connect zawiera nazwę banku (`MB`) i nazwę kanału (`MC`). Na stronie odsłuchowej bank jest u góry, a kanał pod nim; poprzedzają je małe etykiety `Bank:` i `Nazwa:`. Kanał bez własnej nazwy pokazuje sam bank. Jeśli częstotliwość występuje w kilku bankach, **wyświetlany jest tylko aktualny bank i kanał**. Raport radia w trybie pamięci zawiera razem numer banku i pozycji, częstotliwość, nazwę kanału oraz stan odbioru. Nazwa banku pochodzi z odpowiadającego mu rekordu `MB`. Używana jest bieżąca nazwa kanału z radia; jeśli jest pusta, nazwa może pochodzić z dokładnie tej pozycji `MC`, pod warunkiem zgodności częstotliwości.
+
+Przykładowo dwa banki mogą zawierać 145.500 MHz z nazwami `DEMO ONE` i `DEMO TWO`. Przy odbiorze drugiej pozycji widoczny jest tylko jej bank i `DEMO TWO`; port 80 zachowuje tę parę po wznowieniu skanowania. Tytuł karty przeglądarki używa tego samego opisu. W trybie VFO/przeszukiwania albo przy braku aktualnego raportu nazwa banku nie jest zgadywana na podstawie częstotliwości.
 
 Licznik `Słuchacze online` **na porcie 80** zlicza aktywne połączenia odsłuchowe AAC obsługiwane przez tę stronę, także przez przekierowujący do niej serwer HTTPS. Nie liczy unikalnych osób ani samego otwarcia strony: dwie grające karty to dwa odsłuchy. Odtwarzanie bezpośrednio z panelu sterowania nie jest wliczane. Na porcie 8080 nie dodano tego licznika ani małych etykiet.
 
@@ -162,10 +167,11 @@ Odbiorniki potrafią buforować zapis pamięci. Do sprawdzenia końcowego stanu 
 .venv/bin/python -m unittest discover -s tests -p 'test_radio_sync.py' -v
 .venv/bin/python -m unittest discover -s tests -p 'test_memory_scan.py' -v
 .venv/bin/python -m unittest discover -s tests -p 'test_memory_editor.py' -v
+.venv/bin/python -m unittest discover -s tests -p 'test_receiver_identity.py' -v
 ```
 
 Oryginalne testy projektu wymagają zależności deweloperskich z `.[dev]`. Testy nowego podglądu używają danych syntetycznych i nie sterują fizycznym radiem.
 
 Repozytorium nie zawiera prywatnej bazy kanałów, kluczy SSH ani kopii danych z działającego Raspberry Pi.
 
-Opcjonalne testy JavaScript (Node.js): `node --test tests/test_tab_titles.cjs`.
+Opcjonalne testy JavaScript (Node.js): `node --test tests/test_tab_titles.cjs tests/test_receiver_labels.cjs`.

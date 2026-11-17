@@ -37,6 +37,7 @@ class SerialTransport(Transport):
         self._baudrate = baudrate
         self._autodetect = autodetect
         self._serial = None  # type: ignore[assignment]
+        self._line_buffer = bytearray()
 
     def open(self) -> None:
         if self.is_open:
@@ -60,6 +61,7 @@ class SerialTransport(Transport):
                     "explicit port=... ."
                 )
 
+        self._line_buffer.clear()
         try:
             self._serial = serial.Serial(
                 port=port,
@@ -74,6 +76,7 @@ class SerialTransport(Transport):
             raise TransportError(f"Failed to open serial port {port!r}: {exc}") from exc
 
     def close(self) -> None:
+        self._line_buffer.clear()
         if self._serial is not None:
             try:
                 self._serial.close()
@@ -99,16 +102,16 @@ class SerialTransport(Transport):
             raise TransportError("Transport is not open")
         assert self._serial is not None
         deadline = time.monotonic() + timeout
-        buf = bytearray()
+        buf = self._line_buffer
         while time.monotonic() < deadline:
             chunk = self._serial.read(1)
             if not chunk:
                 continue
             if chunk in (b"\r", b"\n"):
                 if buf:
-                    return bytes(buf)
+                    line = bytes(buf)
+                    buf.clear()
+                    return line
                 continue
             buf.extend(chunk)
-        if buf:
-            return bytes(buf)
         return None

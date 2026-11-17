@@ -15,6 +15,7 @@ Original documentation: [English](docs/UPSTREAM_README.md) · [Polish](docs/UPST
 - **Channel editor on port 8080:** individual-channel or whole-bank saves, durable pre-write backups, readback verification, backup download and restore.
 
 - **Port 8080:** receiver control, named bank selection with **Start/Stop memory scanning**, channel labels and CSV uploads from the browser.
+- **Exact bank/channel identity on both ports:** duplicate frequencies show only the receiver’s current memory bank and slot, with no combined labels.
 - Bank and channel names in the **browser tab title** on both ports. Port 80 retains the last received channel; port 8080 follows the current frequency, with a frequency fallback for unnamed channels.
 - **Port 80:** a read-only listening page that retains the last received frequency and channel name while scanning continues.
 - Shared live **AAC-LC audio at 48 kb/s, mono, 24 kHz**, captured from an ALSA audio input through FFmpeg.
@@ -96,11 +97,13 @@ The read-only server blocks control requests. The full control panel on port 808
 
 Both processes must use the same `AOR_VIEWER_DATA_DIR`. Shared systemd configuration can be placed in `/etc/aor-dv10.env`, for example `AOR_AUDIO_DEVICE=plughw:CARD=Device,DEV=0`.
 
-Example files are in `examples/`. Original Connect exports are read without conversion. Multiple names for the same frequency are combined. Uploads are limited to 1 MB and must use UTF-8, optionally with a BOM.
+Example files are in `examples/`. Original Connect exports are read without conversion. Bank-aware display uses the bank and slot reported by the receiver; duplicate frequencies do not combine labels. A simple frequency/name CSV remains accepted for import, but does not provide memory-bank identity. Uploads are limited to 1 MB and must use UTF-8, optionally with a BOM.
 
 ## Last received channel
 
-The listening page records a channel when the receiver reports an open squelch (`squelch_open`). Scanning frequencies do not replace that record. Before the first received signal, it shows a waiting state. Reception history is kept in the viewer service's memory and is cleared when that service restarts. Status is polled approximately once per second while the page is open, so very short transmissions may be missed.
+The listening page captures the bank, slot, frequency and channel name together when the receiver reports open squelch. When scanning resumes, port 80 retains that exact reception, even if the same frequency exists in other banks. Port 8080 follows the current receiver position. Before the first received signal, the listening page shows a waiting state.
+
+The control service receives reports approximately every 500 ms and retains the latest reception independently of browser polling. The page refreshes approximately once per second. Very short transmissions between reports may be missed. History is held in memory; restarting the control service clears the source history. Restarting only the listening service can recover it from the still-running control service.
 
 ## Weekly radio-memory synchronization
 
@@ -120,7 +123,9 @@ The schedule can be customized with the installer's `--sync-calendar` argument. 
 
 ## Bank and channel display; listening count
 
-Original Connect exports contain bank titles (`MB`) and channel names (`MC`). The listening page stacks the bank above the channel, using small `Bank:` and `Nazwa:` captions. An unnamed channel shows its bank only. If a frequency occurs in several banks, all matching labels are displayed.
+Original Connect exports contain bank titles (`MB`) and channel names (`MC`). The listening page stacks the bank above the channel, using small `Bank:` and `Nazwa:` captions. An unnamed channel shows its bank only. If a frequency occurs in several banks, **only the current bank and channel are displayed**. The receiver’s memory-mode report supplies the actual bank/slot, frequency, channel tag and squelch state in one snapshot. The bank title comes from the corresponding `MB` record. The live channel tag is used; if it is blank, the exact `MC` record supplies a name only when its frequency matches.
+
+For example, two banks may both contain 145.500 MHz with names `DEMO ONE` and `DEMO TWO`. Receiving the second position shows only its bank and `DEMO TWO`; port 80 keeps that pair after scanning resumes. The browser tab title follows the same identity. In VFO/search mode or when a current report is unavailable, the display does not guess a memory bank from the frequency.
 
 `Słuchacze online` on **port 80** counts currently open AAC listening connections handled by that page, including connections through an HTTPS proxy to it. It is not a count of unique people or merely open pages; two playing tabs count as two streams. Audio played directly from the control panel is not included. The control page does not get this counter or the new small captions.
 
@@ -166,10 +171,11 @@ The receivers may buffer flash writes. To verify the final stored state, the edi
 .venv/bin/python -m unittest discover -s tests -p 'test_radio_sync.py' -v
 .venv/bin/python -m unittest discover -s tests -p 'test_memory_scan.py' -v
 .venv/bin/python -m unittest discover -s tests -p 'test_memory_editor.py' -v
+.venv/bin/python -m unittest discover -s tests -p 'test_receiver_identity.py' -v
 ```
 
 The original project's tests require its `.[dev]` dependencies. The added viewer tests use synthetic data and do not control physical radio hardware.
 
 Private channel lists, SSH keys and backups from the deployed Raspberry Pi are not included.
 
-Optional JavaScript checks (Node.js): `node --test tests/test_tab_titles.cjs`.
+Optional JavaScript checks (Node.js): `node --test tests/test_tab_titles.cjs tests/test_receiver_labels.cjs`.

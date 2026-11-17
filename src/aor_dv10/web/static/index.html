@@ -6332,7 +6332,7 @@ function updateControlTabTitle(s) {
 function renderStatus(s) {
   updateControlTabTitle(s);
   const channelLabel = document.getElementById('controlChannelName');
-  channelLabel.textContent = s.connected && Number.isFinite(s.frequency_hz) ? (s.channel_name || '').replaceAll(' → ', '\n').replaceAll(' / ', '\n\n') : '';
+  channelLabel.textContent = s.connected && Number.isFinite(s.frequency_hz) ? [s.bank_name, s.memory_name].filter(Boolean).join('\n') : '';
   channelLabel.hidden = !channelLabel.textContent;
   setDot(!!s.connected);
 

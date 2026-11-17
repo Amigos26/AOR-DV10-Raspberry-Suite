@@ -42,43 +42,30 @@ def fetch_json(path):
 
 
 def status():
-    global cached, cached_at, names, names_at, last_received
+    global cached, cached_at, last_received
     with cache_lock:
         now = time.monotonic()
         if cached is not None and now - cached_at < 1:
             return cached
         source = fetch_json('/api/status')
-        if now - names_at >= 60:
-            try:
-                rows = fetch_json('/api/memory?limit=2000')['channels']
-                grouped = {}
-                for row in rows:
-                    hz = round(float(row['frequency_mhz']) * 1000000)
-                    name = str(row.get('name') or '').strip()
-                    if name:
-                        grouped.setdefault(hz, set()).add(name)
-                names = {hz: ' / '.join(sorted(values)) for hz, values in grouped.items()}
-            except (OSError, ValueError, KeyError, TypeError):
-                names = {}
-            names_at = now
         frequency = source.get('frequency_hz')
-        local_names = channel_names.load()
         connected = bool(source.get('connected'))
-        receiving = connected and source.get('squelch_open') is True and isinstance(frequency, int) and frequency > 0
-        if receiving:
-            last_received = {'frequency_hz': frequency, 'received_at': time.time()}
-        held = None
-        if last_received is not None:
-            held = dict(last_received)
-            held['channel_name'] = local_names.get(held['frequency_hz']) or names.get(held['frequency_hz'])
+        coherent = source.get('identity_source') == 'receiver_report'
+        receiving = connected and coherent and source.get('squelch_open') is True
+        fields = ('frequency_hz', 'channel_name', 'bank_name', 'memory_name',
+                  'memory_bank', 'memory_channel', 'receiver_position', 'identity_source', 'received_at')
+        # Upstream retains brief receptions even when the newest RT report is already scanning.
+        candidate = source.get('last_received')
+        if connected and isinstance(candidate, dict) and candidate.get('identity_source') == 'receiver_report':
+            if isinstance(candidate.get('frequency_hz'), int) and candidate['frequency_hz'] > 0:
+                last_received = {key: candidate.get(key) for key in fields}
+        elif receiving and isinstance(frequency, int) and frequency > 0:
+            last_received = {key: source.get(key) for key in fields}
         cached = {
-            'frequency_hz': frequency,
+            **{key: source.get(key) for key in fields},
             'audio_listeners': listener_count(),
-            'channel_name': local_names.get(frequency) or names.get(frequency),
-            'last_received': held,
-            'receiving': receiving,
-            'connected': connected,
-            'updated_at': time.time(),
+            'last_received': dict(last_received) if last_received else None,
+            'receiving': receiving, 'connected': connected, 'updated_at': time.time(),
         }
         cached_at = time.monotonic()
         return cached
